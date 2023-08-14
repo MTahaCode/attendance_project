@@ -194,6 +194,42 @@ const Student = () => {
     setIsLeaveAllowed(1);
   }
 
+  const Grade = () => {
+    let sum = 0;
+    for(let i=0;i<Info.Record.length;i++)
+    {
+      if (Info.Record[i].State === "P")
+      {
+        sum++;
+      }
+      else if (Info.Record[i].State === "L")
+      {
+        sum = sum + 0.5;
+      }
+    }
+    const Percentage = ((sum / Info.Record.length) * 100);
+    if (Percentage >= 90)
+    {
+      return " A";
+    }
+    else if (Percentage >=80)
+    {
+      return " B";
+    }
+    else if (Percentage >=70)
+    {
+      return " C";
+    }
+    else if (Percentage >=60)
+    {
+      return " D";
+    }
+    else
+    {
+      return " F";
+    }
+  }
+
   return (
     <Container>
       {
@@ -254,6 +290,20 @@ const Student = () => {
             <Button variant="contained" disabled={isAttendanceMarked} onClick={() => MarkAttendance()}>Mark Attendance</Button>
             <Button variant="contained" disabled={isLeaveAllowed} onClick={() => SendLeaveRequest()}>Request Leave</Button>
             <Button variant="contained" ref={ViewButton} onClick={() => setTableShow(!TableShow)}>View Attendance</Button>
+            <Typography color={"white"} padding={"10px 20px 30px 0px"}>
+              <span >
+                Grade: 
+              </span> 
+              <span>
+                {
+                  (Info && Info.Record) ? (
+                    Grade()
+                  ) : (
+                    ""
+                  )
+                }
+              </span>
+            </Typography>
             { (TableShow) ? 
               (<TableContainer>
                 <Table>

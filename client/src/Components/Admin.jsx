@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 const TableOfRecords = ({Dates, AllStudents, setAllStudents}) => {
 
   const [IsTableChanged, setIsTableChanged] = useState(true);
+  const [PreviousArray, setPreviousArray] = useState(AllStudents);
 
   const ChangeAttendance = (studentIndex, recordIndex, state) => {
 
@@ -21,22 +22,32 @@ const TableOfRecords = ({Dates, AllStudents, setAllStudents}) => {
   }
 
   const SendModifiedRecord = () => {
-    fetch("/modifiedRecord", {
-      method: "post",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        AllStudents: AllStudents,
-      })
-    }).then(
-      res => res.json()
-    ).then(
-      data => {
-        console.log(data);
+    for (let i=0;i<AllStudents.length;i++)
+    {
+      for (let j=0;j<AllStudents[i].Record.length;j++)
+      {
+        if (AllStudents[i].Record[j].State !== PreviousArray[i].Record[j].State)
+        {
+          fetch("/modifiedRecord", {
+            method: "post",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              ID: AllStudents[i]._id,
+              Record: AllStudents[i].Record[j],
+            })
+          }).then(
+            res => res.json()
+          ).then(
+            data => {
+              console.log(data);
+              setIsTableChanged(true)
+            }
+          )
+        }
       }
-    )
-    setIsTableChanged(true);
+    }
   }
 
 

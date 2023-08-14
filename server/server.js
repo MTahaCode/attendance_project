@@ -249,37 +249,72 @@ app.post("/rejectLeave", (req,res) => {
 })
 
 app.post("/modifiedRecord", (req,res) => {
-    const Students = req.body.AllStudents;
+    const id = new ObjectId(req.body.ID);
+    const AlteredRecord = req.body.Record;
+    
+    console.log(id)
     db.collection("Members")
-    .find({ UserName: { $nin: ["admin"]} })
-    .toArray()
-    .then((allStudents) => {
-        for(let i=0;i<Students.length;i++)
-        {
-            for(let j=0;j<Students[i].Record.length;j++)
-            {
-                    const DBState = allStudents[i].Record[j].State;
-                    const SentState = Students[i].Record[j].State;
-                    if (DBState !== SentState)
-                    {
-                        db.collection("Members")
-                        .updateOne({
-                            "UserName": Students[i].UserName,
-                            "Record.Date": Students[i].Record[j].Date,
-                        },
-                        {
-                            $set: {
-                                "Record.$.State": Students[i].Record[j].State
-                            }
-                        }
-                        )
-                        // console.log(Students[i]);
-                        // console.log("Sent Object", Students[i].Record[j], " Original Object: ", allStudents[i].Record[j])
-
-                    }
-            }
+    // .findOne({
+    //     _id: id,
+    // }).then((student) => {
+    //     console.log(student.UserName)
+    // })
+    .updateOne({ _id: id,
+            "Record.Date": AlteredRecord.Date,
+    },
+    {
+        $set: {
+            "Record.$.State": AlteredRecord.State,
         }
-    })
+    }).then(
+        res.json({msg: "Altered"})
+    )
+    // .findOne({
+    //     _id: id,
+    // }).then((student) => {
+    //     console.log(student.Record)
+    // })
+    // .then(
+    //     db.collection("Members")
+    //     .findOne({ _id: id,
+    //             "Record.Date": AlteredRecord.Date,
+    //     }).then((Student) => {
+    //         for(let i=0;i<Student.Record.length;i++)
+    //         {
+    //             if (Student.Record[i].Date === AlteredRecord.Date)
+    //             {
+    //                 console.log(Student.Record[i]);
+    //                 break;
+    //             }
+    //         }
+    //     }))
+    // .then((allStudents) => {
+    //     for(let i=0;i<Students.length;i++)
+    //     {
+    //         for(let j=0;j<Students[i].Record.length;j++)
+    //         {
+    //                 const DBState = allStudents[i].Record[j].State;
+    //                 const SentState = Students[i].Record[j].State;
+    //                 if (DBState !== SentState)
+    //                 {
+    //                     db.collection("Members")
+    //                     .updateOne({
+    //                         "UserName": Students[i].UserName,
+    //                         "Record.Date": Students[i].Record[j].Date,
+    //                     },
+    //                     {
+    //                         $set: {
+    //                             "Record.$.State": Students[i].Record[j].State
+    //                         }
+    //                     }
+    //                     )
+    //                     // console.log(Students[i]);
+    //                     // console.log("Sent Object", Students[i].Record[j], " Original Object: ", allStudents[i].Record[j])
+
+    //                 }
+    //         }
+    //     }
+    // })
 })
 
 app.post("/addNewStudent", (req,res) => {
