@@ -98,18 +98,6 @@ app.post("/UploadImg", upload.single("TheImage"), (req, res) => {
     // console.log(req.file);
 })
 
-
-// app.get("/verifyCredentials", (req,res) => {
-//     db.collection("Members")
-//     .find()
-//     .toArray()
-//     .then(
-//         (members) => {
-//             res.json(members);
-//         }
-//     )
-// })
-
 app.post("/getStudentRecord", (req,res) => {
     db.collection("Members")
     .findOne({UserName: req.body.StudentName})
@@ -254,11 +242,6 @@ app.post("/modifiedRecord", (req,res) => {
     
     console.log(id)
     db.collection("Members")
-    // .findOne({
-    //     _id: id,
-    // }).then((student) => {
-    //     console.log(student.UserName)
-    // })
     .updateOne({ _id: id,
             "Record.Date": AlteredRecord.Date,
     },
@@ -269,52 +252,6 @@ app.post("/modifiedRecord", (req,res) => {
     }).then(
         res.json({msg: "Altered"})
     )
-    // .findOne({
-    //     _id: id,
-    // }).then((student) => {
-    //     console.log(student.Record)
-    // })
-    // .then(
-    //     db.collection("Members")
-    //     .findOne({ _id: id,
-    //             "Record.Date": AlteredRecord.Date,
-    //     }).then((Student) => {
-    //         for(let i=0;i<Student.Record.length;i++)
-    //         {
-    //             if (Student.Record[i].Date === AlteredRecord.Date)
-    //             {
-    //                 console.log(Student.Record[i]);
-    //                 break;
-    //             }
-    //         }
-    //     }))
-    // .then((allStudents) => {
-    //     for(let i=0;i<Students.length;i++)
-    //     {
-    //         for(let j=0;j<Students[i].Record.length;j++)
-    //         {
-    //                 const DBState = allStudents[i].Record[j].State;
-    //                 const SentState = Students[i].Record[j].State;
-    //                 if (DBState !== SentState)
-    //                 {
-    //                     db.collection("Members")
-    //                     .updateOne({
-    //                         "UserName": Students[i].UserName,
-    //                         "Record.Date": Students[i].Record[j].Date,
-    //                     },
-    //                     {
-    //                         $set: {
-    //                             "Record.$.State": Students[i].Record[j].State
-    //                         }
-    //                     }
-    //                     )
-    //                     // console.log(Students[i]);
-    //                     // console.log("Sent Object", Students[i].Record[j], " Original Object: ", allStudents[i].Record[j])
-
-    //                 }
-    //         }
-    //     }
-    // })
 })
 
 app.post("/addNewStudent", (req,res) => {
@@ -368,18 +305,45 @@ app.post("/addNewStudent", (req,res) => {
     })
 })
 
-// app.get("/getImg", (req,res) => {
+app.post("/getAdminOnDates", (req,res) => {
+
+    const fromDate = new Date(req.body.FromDate);
+    const toDate = new Date(req.body.ToDate);
+    fromDate.setHours(0, 0, 0, 0);
+    toDate.setHours(0, 0, 0, 0);
+    // fromDate.setDate(fromDate.getDate() - 1);
+    // toDate.setDate(toDate.getDate() - 1);
+    // const date1 = new Date(toDate);
+    // const date2 = new Date(toDate);
+    // date2.setDate(date2.getDate() + 1);
+    // console.log(fromDate, toDate);
+    // console.log(date1 <= date2);
     
-//     db.collection("LeaveRequests")
-//     .findOne({
-//         title: "Image",
-//     }).then(img => {
-//         const ImageBinary = img.ImgBinary;
-//         const ImageBuffer = Buffer.from(ImageBinary.buffer);
-//         res.set("Content-Type", "image/jpeg");
-//         res.send(ImageBuffer);
-//     })
-// })
+    db.collection("Members")
+    .find({ UserName: { $nin: ["admin"]} })
+    .toArray()
+    .then((Students) => {
+        let arr = [];
+        for(const student of Students)
+        {         
+            const col = student.Record.filter((record) => {
+                const thisDate = new Date(record.Date);
+                // thisDate.setDate(thisDate.getDate() + 1);
+                thisDate.setHours(0,0,0,0);
+                // console.log("asdf: ",thisDate, fromDate, toDate);
+                if (thisDate >= fromDate && thisDate <= toDate)
+                {
+                    return 1;
+                }
+                return 0;
+            })
+            console.log(col);
+            student.Record = col;
+            arr.push(student);
+        }
+        res.json(arr);
+    })
+})
 
 connectToDb((err) => {
     if (!err)

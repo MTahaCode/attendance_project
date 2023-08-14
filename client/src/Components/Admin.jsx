@@ -1,15 +1,41 @@
 import { Typography, FormControl, Button, InputLabel, Input, 
   Container, TableContainer, Paper, Table, TableHead, TableRow
-  ,TableCell, TableBody, Box, Select, MenuItem, Toolbar, AppBar} from "@mui/material";
+  ,TableCell, TableBody, Box, Select, MenuItem, Toolbar, AppBar
+  , TextField} from "@mui/material";
+import AdapterDateFns from '@mui/lab/AdapterDateFns';
+import LocalizationProvider from '@mui/lab/LocalizationProvider';
+import DatePicker from '@mui/lab/DatePicker';
 import { useEffect, useState, useRef } from "react";
 import { useLocation } from "react-router-dom"
 import theme from './Theme';
 import { useNavigate } from 'react-router-dom';
 
-const TableOfRecords = ({Dates, AllStudents, setAllStudents}) => {
+const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
 
   const [IsTableChanged, setIsTableChanged] = useState(true);
   const [PreviousArray, setPreviousArray] = useState(AllStudents);
+
+  const FormatDate = () => {
+    const fullDate = new Date();
+    const year = fullDate.getFullYear().toString();
+    console.log("Year: ",year);
+    const month = (fullDate.getMonth() + 1).toString().padStart(2, '0');
+    console.log("Month: ",month);
+    const day = fullDate.getDate().toString().padStart(2, '0');
+    console.log("Day: ",day);
+    const required = `${year}-${month}-${day}`;
+    console.log("Full Date: ",required);
+    return required;
+  }
+
+  const [FromDate, setFromDate] = useState("2023-08-08");
+  const [ToDate, setToDate] = useState(FormatDate());
+
+  const handleDateChange = (event) => {
+    const newDate = event.target.value;
+    setFromDate(newDate);
+    console.log(newDate); // Log the new date value
+  };
 
   const ChangeAttendance = (studentIndex, recordIndex, state) => {
 
@@ -50,11 +76,59 @@ const TableOfRecords = ({Dates, AllStudents, setAllStudents}) => {
     }
   }
 
+  useEffect(() => {
+    fetch("/getAdminOnDates", {
+      method: "post",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        FromDate: new Date(FromDate),
+        ToDate: new Date(ToDate),
+      })
+    }).then(
+      res => res.json()
+      ).then(
+        data => {
+          console.log("From Changing the date",data);
+          setDates(() => {
+            let arr = [];
+            for (let i=0;i<data.length;i++)
+            {
+              arr = [...arr, ...data[i].Record.map((record) => record.Date) ]
+            }
+            const UniqueArray = [...new Set(arr)];
+            // console.log("Unique Array",UniqueArray);
+            return UniqueArray;
+          })
+          setAllStudents(data);
+      }).catch(err => {
+        console.log(err)
+    })
+
+  },[FromDate, ToDate])
 
   return (
     <Box >
+      <Box sx={{display:"flex", justifyContent:"space-evenly"}}>
+        <Typography style={{display:"flex", alignItems:"center", gap:"1em"}}>
+          From: 
+          <TextField
+            type="date"
+            value={FromDate}
+            onChange={(event) => setFromDate(event.target.value)}
+          />
+        </Typography>
+        <Typography style={{display:"flex", alignItems:"center", gap:"1em"}}>
+          To: 
+          <TextField
+            type="date"
+            value={ToDate}
+            onChange={(event) => setToDate(event.target.value)}
+          />
+        </Typography>
+      </Box>
       <TableContainer>
-        {/* ... Table code */}
         <Table>
           <TableHead>
             <TableRow align="center">
@@ -239,7 +313,7 @@ const Admin = () => {
             <Button variant="contained" ref={LeaveButton} onClick={() => {setTableShow((TableShow !== 2) ? 2:0); setUseEffectTrigger(!UseEffectTrigger)}}>View Leaves</Button>
             
             {TableShow === 1 ? (
-              <TableOfRecords Dates={Dates} AllStudents={AllStudents} setAllStudents={setAllStudents} />
+              <TableOfRecords Dates={Dates} setDates={setDates} AllStudents={AllStudents} setAllStudents={setAllStudents} />
               ): ("")}
             {(TableShow === 2) ? (
               <ListOfLeaves Leaves={Leaves} UseEffectTrigger={UseEffectTrigger} setUseEffectTrigger={setUseEffectTrigger} />
