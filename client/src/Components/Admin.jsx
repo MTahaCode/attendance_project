@@ -18,13 +18,13 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
   const FormatDate = () => {
     const fullDate = new Date();
     const year = fullDate.getFullYear().toString();
-    console.log("Year: ",year);
+    // console.log("Year: ",year);
     const month = (fullDate.getMonth() + 1).toString().padStart(2, '0');
-    console.log("Month: ",month);
+    // console.log("Month: ",month);
     const day = fullDate.getDate().toString().padStart(2, '0');
-    console.log("Day: ",day);
+    // console.log("Day: ",day);
     const required = `${year}-${month}-${day}`;
-    console.log("Full Date: ",required);
+    // console.log("Full Date: ",required);
     return required;
   }
 
@@ -34,7 +34,7 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
   const handleDateChange = (event) => {
     const newDate = event.target.value;
     setFromDate(newDate);
-    console.log(newDate); // Log the new date value
+    // console.log(newDate); // Log the new date value
   };
 
   const ChangeAttendance = (studentIndex, recordIndex, state) => {
@@ -67,8 +67,8 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
             res => res.json()
           ).then(
             data => {
-              console.log(data);
-              setIsTableChanged(true)
+              alert(data.msg);
+              setIsTableChanged(true);
             }
           )
         }
@@ -90,18 +90,60 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
       res => res.json()
       ).then(
         data => {
-          console.log("From Changing the date",data);
-          setDates(() => {
-            let arr = [];
-            for (let i=0;i<data.length;i++)
+          // console.log("Getting the Data First",data);
+          // let arr = [];
+          //   for (let i=0;i<data.length;i++)
+          //   {
+          //     arr = [...arr, ...data[i].Record.map((record) => record.Date) ]
+          //   }
+          // const UniqueArray = [...new Set(arr)];
+          let arr = [];
+          let InitialDate = new Date(FromDate);
+          const FinalDate = new Date(ToDate);
+          while (InitialDate <= FinalDate)
+          {
+            arr.push(
+              InitialDate.toLocaleDateString()
+            )
+            InitialDate.setDate(InitialDate.getDate() + 1)
+          }
+          setDates(arr);
+          setAllStudents(() => {
+            let Students = data;
+            for ( const date of arr.reverse() )
             {
-              arr = [...arr, ...data[i].Record.map((record) => record.Date) ]
+              for ( let student of Students)
+              {
+                const IsAttendancePresent = student.Record.some((record) => {
+                  if (record.Date === date)
+                  {
+                    return true;
+                  }
+                  return false;
+                })
+                if (!IsAttendancePresent)
+                {
+                  student.Record.unshift({
+                    Date: date,
+                    State: "--",
+                  })
+                }
+                student.Record.sort((record1, record2) => {
+                  const date1 = new Date(record1.Date);
+                  const date2 = new Date(record2.Date);
+                  // console.log("Date1: ",date1,"Date2: ", date2);
+                  if (date1 < date2) {
+                    return -1;
+                  } else if (date1 > date2) {
+                    return 1;
+                  } else {
+                    return 0;
+                  }
+                });
+              }
             }
-            const UniqueArray = [...new Set(arr)];
-            // console.log("Unique Array",UniqueArray);
-            return UniqueArray;
-          })
-          setAllStudents(data);
+            return Students;
+          });
       }).catch(err => {
         console.log(err)
     })
@@ -109,7 +151,7 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
   },[FromDate, ToDate])
 
   return (
-    <Box >
+    <Box>
       <Box sx={{display:"flex", justifyContent:"space-evenly"}}>
         <Typography style={{display:"flex", alignItems:"center", gap:"1em"}}>
           From: 
@@ -143,7 +185,8 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {AllStudents.map((student, studentIndex) => 
+            {(AllStudents) ? 
+            (AllStudents.map((student, studentIndex) => 
             (
               <TableRow>
                 <TableCell  style={{borderRight:`2px solid ${theme.palette.secondary.light}`}} variant="head">
@@ -151,6 +194,7 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
                 </TableCell>
                 {student.Record.map((record, recordIndex) => 
                 (<TableCell>
+                  {record.Date}
                   <Select
                     variant="filled"
                     sx={{ 
@@ -170,6 +214,7 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
                     }}
                     value={record.State}
                   >
+                    <MenuItem value="--" onClick={() => {ChangeAttendance(studentIndex, recordIndex, "--")}}>--</MenuItem>
                     <MenuItem value="L" onClick={() => {ChangeAttendance(studentIndex, recordIndex, "L")}}>L</MenuItem>
                     <MenuItem value="A" onClick={() => {ChangeAttendance(studentIndex, recordIndex, "A")}}>A</MenuItem>
                     <MenuItem value="P" onClick={() => {ChangeAttendance(studentIndex, recordIndex, "P")}}>P</MenuItem>
@@ -177,7 +222,8 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
                 </TableCell>)
               )}
               </TableRow>
-            ))}
+            ))
+            ): ("")}
           </TableBody>
         </Table>
       </TableContainer>
@@ -266,18 +312,50 @@ const Admin = () => {
       res => res.json()
     ).then(
       data => {
-        console.log("Getting the Data First",data);
-        setDates(() => {
-          let arr = [];
+        // console.log("Getting the Data First",data);
+        let arr = [];
           for (let i=0;i<data.length;i++)
           {
             arr = [...arr, ...data[i].Record.map((record) => record.Date) ]
           }
-          const UniqueArray = [...new Set(arr)];
-          // console.log("Unique Array",UniqueArray);
-          return UniqueArray;
-        })
-        setAllStudents(data);
+        const UniqueArray = [...new Set(arr)];
+        setDates(UniqueArray);
+        setAllStudents(() => {
+          let Students = data;
+          for ( const date of UniqueArray.reverse() )
+          {
+            for ( let student of Students)
+            {
+              const IsAttendancePresent = student.Record.some((record) => {
+                if (record.Date === date)
+                {
+                  return true;
+                }
+                return false;
+              })
+              if (!IsAttendancePresent)
+              {
+                student.Record.unshift({
+                  Date: date,
+                  State: "--",
+                })
+              }
+              student.Record.sort((record1, record2) => {
+                const date1 = new Date(record1.Date);
+                const date2 = new Date(record2.Date);
+                // console.log("Date1: ",date1,"Date2: ", date2);
+                if (date1 < date2) {
+                  return -1;
+                } else if (date1 > date2) {
+                  return 1;
+                } else {
+                  return 0;
+                }
+              });
+            }
+          }
+          return Students;
+        });
     }).catch(err => {
       console.log(err)
     })

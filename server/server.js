@@ -35,43 +35,34 @@ const upload = multer({storage: storage})
 
 
 // Updating Attendance
-const UpdateAttendanceRecord = () => {
-
+const UpdateAttendanceRecord = async () => {
     const date = new Date();
     const dateOnly = date.toLocaleDateString();
-    console.log("Today's Date: ",date);
+    console.log("Today's Date: ", date);
     const NewAttendance = {
         Date: dateOnly,
         State: "A",
-    }
+    };
 
-    db.collection("Members")
-    .find()
-    .forEach((student) => {
-        // console.log("Updating ATtendacne place: ", student)
-        if (student.UserName !== "admin")
-        {
-            // console.log("Performing Record Check");
+    const students = await db.collection("Members").find({ UserName: { $nin: ["admin"] } }).toArray();
+
+    for (const student of students) {
+        if (student.UserName !== "admin" && student.Record) { // Add a check for 'student.Record'
             let DoesDateExist = student.Record.some((record) => record.Date === dateOnly);
-            if (!DoesDateExist)
-            {
-                db.collection("Members")
-                .updateOne(
-                    {UserName: student.UserName},
-                    { $push : { Record: NewAttendance}},
-                    (error,result) => {
-                    if (error)
-                    {
-                        console.error(`Error inserting document of ${student.UserName} : `, error);
-                        return;
-                    }
-                    // console.log(`Attendance of ${student.UserName} inserted successfully`);
+            if (!DoesDateExist) {
+                try {
+                    const result = await db.collection("Members").updateOne(
+                        { UserName: student.UserName },
+                        { $push: { Record: NewAttendance } }
+                    );
+                    console.log(`Attendance of ${student.UserName} inserted successfully`, result);
+                } catch (error) {
+                    console.error(`Error inserting document of ${student.UserName} : `, error);
                 }
-                ).then((ss) => {console.log("Doing : ",ss)})
             }
         }
-    })
-}
+    }
+};
 // End Updating Attendance
 
 app.post("/UploadImg", upload.single("TheImage"), (req, res) => {
@@ -158,7 +149,17 @@ app.post("/markAttendance", (req,res) => {
         $set: {
             "Record.$.State": "P"
         }
-    })
+    }).then(
+        res.json({msg: "Attendance has been marked"})
+        // db.collection("Members")
+        // .findOne({UserName: req.body.StudentName})
+        // .then((data) => {
+        //     res.json({
+        //         msg: "Attendance has been marked",
+        //         // data: data,
+        //     })
+        // })
+    )
 })
 
 app.get("/getAdminRecord", (req,res) => {
@@ -174,21 +175,40 @@ app.post("/sendLeaveRequest", (req, res) => {
     const date = new Date();
     const dateOnly = date.toLocaleDateString();
     db.collection("LeaveRequests")
-        .insertOne(
-            {
-                UserName: req.body.StudentName,
-                Date: dateOnly,
-            },
-            (err, result) => {
-                if (err) {
-                    console.error("Error inserting document:", err);
-                    res.status(500).send("Error inserting document");
-                } else {
-                    console.log("Document inserted:", result.insertedId);
-                    res.status(200).send("Document inserted successfully");
+    .findOne(
+        {
+            UserName: req.body.StudentName,
+            Date: dateOnly,
+        }
+    ).then((leave) => {
+        if (leave)
+        {
+            res.json({msg: "Leave has already been sent"})
+        }
+        else
+        {
+            db.collection("LeaveRequests")
+            .insertOne(
+                {
+                    UserName: req.body.StudentName,
+                    Date: dateOnly,
                 }
-            }
-        );
+                // (err, result) => {
+                //     if (err) {
+                //         console.error("Error inserting document:", err);
+                //         res.status(500).send("Error inserting document");
+                //     } else {
+                //         console.log("Document inserted:", result.insertedId);
+                //         res.status(200).send("Document inserted successfully");
+                //     }
+                // }
+            ).then(
+                res.json({msg: "Leave Request Sent"})
+            )
+        }
+    }
+        
+    )
 });
 
 app.get("/getLeaves", (req,res) => {
@@ -239,19 +259,90 @@ app.post("/rejectLeave", (req,res) => {
 app.post("/modifiedRecord", (req,res) => {
     const id = new ObjectId(req.body.ID);
     const AlteredRecord = req.body.Record;
-    
-    console.log(id)
-    db.collection("Members")
-    .updateOne({ _id: id,
-            "Record.Date": AlteredRecord.Date,
-    },
+    // console.log(AlteredRecord);
+
+    const filter = {
+        _id: id,
+        "Record.Date": AlteredRecord.Date,
+    }
+
+    if (AlteredRecord.State === "--")
     {
-        $set: {
-            "Record.$.State": AlteredRecord.State,
-        }
-    }).then(
-        res.json({msg: "Altered"})
-    )
+        db.collection("Members")
+        .updateOne(filter, {
+            $pull: {
+                Record: {Date: AlteredRecord.Date},
+            }
+        })
+        .then(
+            res.json({msg: `Removed attendance of ${id} on ${AlteredRecord.Date}`})
+        )
+    }
+    else
+    {
+        console.log("It has Something")
+        db.collection("Members")
+        .findOne(filter)
+        .then((found) => {
+            console.log(found)
+            if (!found)
+            {
+                console.log("Not Found")
+                db.collection("Members")
+                .updateOne({ _id: id }
+                    ,{
+                    $push: {
+                        Record: {
+                            Date: AlteredRecord.Date,
+                            State: AlteredRecord.State,
+                        }
+                    }
+                })
+                .then(
+                    db.collection("Members")
+                    .findOne({ _id: id }
+                    ).then(
+                        (student) => {
+                            student.Record.sort((record1, record2) => {
+                                const date1 = new Date(record1.Date);
+                                const date2 = new Date(record2.Date);
+                                // console.log("Date1: ",date1,"Date2: ", date2);
+                                if (date1 < date2) {
+                                  return -1;
+                                } else if (date1 > date2) {
+                                  return 1;
+                                } else {
+                                  return 0;
+                                }
+                            });
+                            // console.log("After Sorting: ",student);
+                            db.collection("Members")
+                            .updateOne({ _id: id }
+                                ,{
+                                    $set: {
+                                        Record: student.Record,
+                                    }
+                                }
+                            ).then(
+                                res.json({msg: `Added new attendance record of ${id} on ${AlteredRecord.Date}`})
+                            )
+                        }
+                    )
+                )
+            }
+            else
+            {
+                db.collection("Members")
+                .updateOne(filter, {
+                    $set: {
+                        "Record.$.State": AlteredRecord.State,
+                    }
+                }).then(
+                    res.json({msg: `Changed attendance of ${id} on ${AlteredRecord.Date}`})
+                )
+            }
+        })
+    }
 })
 
 app.post("/addNewStudent", (req,res) => {
@@ -277,17 +368,20 @@ app.post("/addNewStudent", (req,res) => {
                 ProfilePic: null,
                 Record: (() => {
                     let arr = [];
-                    let date = new Date(2023, 7, 8);
+                    // let date = new Date(2023, 7, 8);
                     const today = new Date();
-                    
-                    while(date <= today)
-                    {
-                        arr.push({
-                            Date: date.toLocaleDateString(),
-                            State: "A",
-                        });
-                        date.setDate(date.getDate() + 1);
-                    }
+                    arr.push({
+                        Date: today.toLocaleDateString(),
+                        State: "A",
+                    })
+                    // while(date <= today)
+                    // {
+                    //     arr.push({
+                    //         Date: date.toLocaleDateString(),
+                    //         State: "A",
+                    //     });
+                    //     date.setDate(date.getDate() + 1);
+                    // }
                     return arr;
                 })(),
             };
@@ -305,45 +399,43 @@ app.post("/addNewStudent", (req,res) => {
     })
 })
 
-app.post("/getAdminOnDates", (req,res) => {
+app.post("/getAdminOnDates", (req, res) => {
 
     const fromDate = new Date(req.body.FromDate);
     const toDate = new Date(req.body.ToDate);
     fromDate.setHours(0, 0, 0, 0);
     toDate.setHours(0, 0, 0, 0);
-    // fromDate.setDate(fromDate.getDate() - 1);
-    // toDate.setDate(toDate.getDate() - 1);
-    // const date1 = new Date(toDate);
-    // const date2 = new Date(toDate);
-    // date2.setDate(date2.getDate() + 1);
-    // console.log(fromDate, toDate);
-    // console.log(date1 <= date2);
-    
+
     db.collection("Members")
-    .find({ UserName: { $nin: ["admin"]} })
-    .toArray()
-    .then((Students) => {
-        let arr = [];
-        for(const student of Students)
-        {         
-            const col = student.Record.filter((record) => {
-                const thisDate = new Date(record.Date);
-                // thisDate.setDate(thisDate.getDate() + 1);
-                thisDate.setHours(0,0,0,0);
-                // console.log("asdf: ",thisDate, fromDate, toDate);
-                if (thisDate >= fromDate && thisDate <= toDate)
-                {
-                    return 1;
+        .find({ UserName: { $nin: ["admin"]} })
+        .toArray()
+        .then((Students) => {
+            if (Students.length > 0) { // Check if the array is not empty
+                let arr = [];
+                for (const student of Students) {
+                    if (student.Record) { // Check if the 'Record' array exists
+                        const col = student.Record.filter((record) => {
+                            const thisDate = new Date(record.Date);
+                            thisDate.setHours(0, 0, 0, 0);
+                            if (thisDate >= fromDate && thisDate <= toDate) {
+                                return true; // Use `true` to include the record in the filtered array
+                            }
+                            return false;
+                        });
+                        student.Record = col;
+                        arr.push(student);
+                    }
                 }
-                return 0;
-            })
-            console.log(col);
-            student.Record = col;
-            arr.push(student);
-        }
-        res.json(arr);
-    })
-})
+                res.json(arr);
+            } else {
+                res.json([]); // Send an empty array if no students found
+            }
+        })
+        .catch((error) => {
+            console.error("Error fetching data:", error);
+            res.status(500).json({ error: "Internal server error" });
+        });
+});
 
 connectToDb((err) => {
     if (!err)

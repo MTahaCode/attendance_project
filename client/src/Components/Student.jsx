@@ -160,8 +160,8 @@ const Student = () => {
       res => res.json()
     ).then(
       data => {
-        // console.log(data);
-        setInfo(data);
+        alert(data.msg);
+        // setInfo(data.data);
       }
     )
   }
@@ -180,7 +180,8 @@ const Student = () => {
       res => res.json()
     ).then(
       data => {
-        console.log(data);
+        alert(data.msg);
+        // console.log(data);
       }
       ).catch(err => console.log(err))
       fetch("/getImg")
