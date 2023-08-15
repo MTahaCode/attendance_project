@@ -15,8 +15,9 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
   const [IsTableChanged, setIsTableChanged] = useState(true);
   const [PreviousArray, setPreviousArray] = useState(AllStudents);
 
-  const FormatDate = () => {
+  const FormatDate = (change) => {
     const fullDate = new Date();
+    fullDate.setDate(fullDate.getDate() + change)
     const year = fullDate.getFullYear().toString();
     // console.log("Year: ",year);
     const month = (fullDate.getMonth() + 1).toString().padStart(2, '0');
@@ -28,8 +29,8 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
     return required;
   }
 
-  const [FromDate, setFromDate] = useState("2023-08-08");
-  const [ToDate, setToDate] = useState(FormatDate());
+  const [FromDate, setFromDate] = useState(FormatDate(-6));
+  const [ToDate, setToDate] = useState(FormatDate(0));
 
   const handleDateChange = (event) => {
     const newDate = event.target.value;
@@ -52,25 +53,27 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
     {
       for (let j=0;j<AllStudents[i].Record.length;j++)
       {
-        if (AllStudents[i].Record[j].State !== PreviousArray[i].Record[j].State)
-        {
-          fetch("/modifiedRecord", {
-            method: "post",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              ID: AllStudents[i]._id,
-              Record: AllStudents[i].Record[j],
-            })
-          }).then(
-            res => res.json()
-          ).then(
-            data => {
-              alert(data.msg);
-              setIsTableChanged(true);
-            }
-          )
+        if (AllStudents[i].Record[j] && PreviousArray[i].Record[j] && AllStudents[i].Record[j].State && PreviousArray[i].Record[j].State)
+        {  if (AllStudents[i].Record[j].State !== PreviousArray[i].Record[j].State)
+          {
+            fetch("/modifiedRecord", {
+              method: "post",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                ID: AllStudents[i]._id,
+                Record: AllStudents[i].Record[j],
+              })
+            }).then(
+              res => res.json()
+            ).then(
+              data => {
+                console.log(data.msg);
+                setIsTableChanged(true);
+              }
+            )
+          }
         }
       }
     }
@@ -142,6 +145,7 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
                 });
               }
             }
+            setPreviousArray(AllStudents);
             return Students;
           });
       }).catch(err => {
