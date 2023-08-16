@@ -162,14 +162,14 @@ app.post("/markAttendance", (req,res) => {
     )
 })
 
-app.get("/getAdminRecord", (req,res) => {
-    db.collection("Members")
-    .find({ UserName: { $nin: ["admin"]} })
-    .toArray()
-    .then((allStudents) => 
-        res.json(allStudents)
-    )
-})
+// app.get("/getAdminRecord", (req,res) => {
+//     db.collection("Members")
+//     .find({ UserName: { $nin: ["admin"]} })
+//     .toArray()
+//     .then((allStudents) => 
+//         res.json(allStudents)
+//     )
+// })
 
 app.post("/sendLeaveRequest", (req, res) => {
     const date = new Date();
@@ -259,7 +259,10 @@ app.post("/rejectLeave", (req,res) => {
 app.post("/modifiedRecord", (req,res) => {
     const id = new ObjectId(req.body.ID);
     const AlteredRecord = req.body.Record;
+    const Name = req.body.Name;
     // console.log(AlteredRecord);
+
+    // res.json({msg: `The Record: ${AlteredRecord.Date} : ${AlteredRecord.State} of Student: ${Name}`})
 
     const filter = {
         _id: id,
@@ -275,7 +278,7 @@ app.post("/modifiedRecord", (req,res) => {
             }
         })
         .then(
-            res.json({msg: `Removed attendance of ${id} on ${AlteredRecord.Date}`})
+            res.json({msg: `Removed attendance of ${Name} on ${AlteredRecord.Date}`})
         )
     }
     else
@@ -324,7 +327,7 @@ app.post("/modifiedRecord", (req,res) => {
                                     }
                                 }
                             ).then(
-                                res.json({msg: `Added new attendance record of ${id} on ${AlteredRecord.Date}`})
+                                res.json({msg: `Added new attendance record of ${Name} on ${AlteredRecord.Date}`})
                             )
                         }
                     )
@@ -338,7 +341,7 @@ app.post("/modifiedRecord", (req,res) => {
                         "Record.$.State": AlteredRecord.State,
                     }
                 }).then(
-                    res.json({msg: `Changed attendance of ${id} on ${AlteredRecord.Date}`})
+                    res.json({msg: `Changed attendance of ${Name} on ${AlteredRecord.Date}`})
                 )
             }
         })

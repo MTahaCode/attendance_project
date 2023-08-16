@@ -10,10 +10,14 @@ import { useLocation } from "react-router-dom"
 import theme from './Theme';
 import { useNavigate } from 'react-router-dom';
 
-const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
+const TableOfRecords = () => {
 
+  const [AllStudents, setAllStudents] = useState([]);
+  const [ModifiedRecords, setModifiedRecords] = useState([]);
+
+  const [Dates, setDates] = useState([]);
+  
   const [IsTableChanged, setIsTableChanged] = useState(true);
-  const [PreviousArray, setPreviousArray] = useState(AllStudents);
 
   const FormatDate = (change) => {
     const fullDate = new Date();
@@ -32,11 +36,11 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
   const [FromDate, setFromDate] = useState(FormatDate(-6));
   const [ToDate, setToDate] = useState(FormatDate(0));
 
-  const handleDateChange = (event) => {
-    const newDate = event.target.value;
-    setFromDate(newDate);
-    // console.log(newDate); // Log the new date value
-  };
+  // const handleDateChange = (event) => {
+  //   const newDate = event.target.value;
+  //   setFromDate(newDate);
+  //   // console.log(newDate); // Log the new date value
+  // };
 
   const ChangeAttendance = (studentIndex, recordIndex, state) => {
 
@@ -45,38 +49,37 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
       updatedStudents[studentIndex].Record[recordIndex].State = state;
       return updatedStudents; 
     });
+    ModifiedRecords.push(
+      {
+        ID: AllStudents[studentIndex]._id,
+        Record: AllStudents[studentIndex].Record[recordIndex],
+        Name: AllStudents[studentIndex].UserName,
+      }
+    );
     setIsTableChanged(false);
   }
 
   const SendModifiedRecord = () => {
-    for (let i=0;i<AllStudents.length;i++)
+    for (const record of ModifiedRecords)
     {
-      for (let j=0;j<AllStudents[i].Record.length;j++)
-      {
-        if (AllStudents[i].Record[j] && PreviousArray[i].Record[j] && AllStudents[i].Record[j].State && PreviousArray[i].Record[j].State)
-        {  if (AllStudents[i].Record[j].State !== PreviousArray[i].Record[j].State)
-          {
-            fetch("/modifiedRecord", {
-              method: "post",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                ID: AllStudents[i]._id,
-                Record: AllStudents[i].Record[j],
-              })
-            }).then(
-              res => res.json()
-            ).then(
-              data => {
-                console.log(data.msg);
-                setIsTableChanged(true);
-              }
-            )
-          }
+      fetch("/modifiedRecord", {
+        method: "post",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(
+          record,
+        )
+      }).then(
+        res => res.json()
+      ).then(
+        data => {
+          alert(data.msg);
+          setIsTableChanged(true);
         }
-      }
+      )
     }
+    setModifiedRecords([]);
   }
 
   useEffect(() => {
@@ -105,49 +108,47 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
           const FinalDate = new Date(ToDate);
           while (InitialDate <= FinalDate)
           {
-            arr.push(
+            arr.unshift(
               InitialDate.toLocaleDateString()
             )
             InitialDate.setDate(InitialDate.getDate() + 1)
           }
           setDates(arr);
-          setAllStudents(() => {
-            let Students = data;
-            for ( const date of arr.reverse() )
+
+          const Students = data;
+          for ( const date of arr )
+          {
+            for ( const student of Students)
             {
-              for ( let student of Students)
-              {
-                const IsAttendancePresent = student.Record.some((record) => {
-                  if (record.Date === date)
-                  {
-                    return true;
-                  }
-                  return false;
-                })
-                if (!IsAttendancePresent)
+              const IsAttendancePresent = student.Record.some((record) => {
+                if (record.Date === date)
                 {
-                  student.Record.unshift({
-                    Date: date,
-                    State: "--",
-                  })
+                  return true;
                 }
-                student.Record.sort((record1, record2) => {
-                  const date1 = new Date(record1.Date);
-                  const date2 = new Date(record2.Date);
-                  // console.log("Date1: ",date1,"Date2: ", date2);
-                  if (date1 < date2) {
-                    return -1;
-                  } else if (date1 > date2) {
-                    return 1;
-                  } else {
-                    return 0;
-                  }
-                });
+                return false;
+              })
+              if (!IsAttendancePresent)
+              {
+                student.Record.unshift({
+                  Date: date,
+                  State: "--",
+                })
               }
+              student.Record.sort((record1, record2) => {
+                const date1 = new Date(record1.Date);
+                const date2 = new Date(record2.Date);
+                // console.log("Date1: ",date1,"Date2: ", date2);
+                if (date1 < date2) {
+                  return -1;
+                } else if (date1 > date2) {
+                  return 1;
+                } else {
+                  return 0;
+                }
+              });
             }
-            setPreviousArray(AllStudents);
-            return Students;
-          });
+          }
+          setAllStudents(Students);
       }).catch(err => {
         console.log(err)
     })
@@ -198,7 +199,7 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
                 </TableCell>
                 {student.Record.map((record, recordIndex) => 
                 (<TableCell>
-                  {record.Date}
+                  {/* {record.Date} */}
                   <Select
                     variant="filled"
                     sx={{ 
@@ -231,7 +232,7 @@ const TableOfRecords = ({Dates, setDates, AllStudents, setAllStudents}) => {
           </TableBody>
         </Table>
       </TableContainer>
-      <Button variant="contained" onClick={() => {SendModifiedRecord()}} disabled={IsTableChanged}>Save</Button>
+      <Button variant="contained" onClick={() => {console.log("clicked");SendModifiedRecord()}} disabled={IsTableChanged}>Save</Button>
     </Box>
   )
 }
@@ -301,8 +302,6 @@ const Admin = () => {
   const location = useLocation();
   const UserType = (location.state) ? location.state.userType : "Not Admin";
 
-  const [AllStudents, setAllStudents] = useState([]);
-  const [Dates, setDates] = useState([]);
   const [TableShow, setTableShow] = useState(0);
   const [Leaves, setLeaves] = useState([]);
   const ViewButton = useRef(null);
@@ -311,58 +310,58 @@ const Admin = () => {
 
   useEffect(() => {
 
-    fetch("/getAdminRecord")
-    .then(
-      res => res.json()
-    ).then(
-      data => {
-        // console.log("Getting the Data First",data);
-        let arr = [];
-          for (let i=0;i<data.length;i++)
-          {
-            arr = [...arr, ...data[i].Record.map((record) => record.Date) ]
-          }
-        const UniqueArray = [...new Set(arr)];
-        setDates(UniqueArray);
-        setAllStudents(() => {
-          let Students = data;
-          for ( const date of UniqueArray.reverse() )
-          {
-            for ( let student of Students)
-            {
-              const IsAttendancePresent = student.Record.some((record) => {
-                if (record.Date === date)
-                {
-                  return true;
-                }
-                return false;
-              })
-              if (!IsAttendancePresent)
-              {
-                student.Record.unshift({
-                  Date: date,
-                  State: "--",
-                })
-              }
-              student.Record.sort((record1, record2) => {
-                const date1 = new Date(record1.Date);
-                const date2 = new Date(record2.Date);
-                // console.log("Date1: ",date1,"Date2: ", date2);
-                if (date1 < date2) {
-                  return -1;
-                } else if (date1 > date2) {
-                  return 1;
-                } else {
-                  return 0;
-                }
-              });
-            }
-          }
-          return Students;
-        });
-    }).catch(err => {
-      console.log(err)
-    })
+    // fetch("/getAdminRecord")
+    // .then(
+    //   res => res.json()
+    // ).then(
+    //   data => {
+    //     // console.log("Getting the Data First",data);
+    //     let arr = [];
+    //       for (let i=0;i<data.length;i++)
+    //       {
+    //         arr = [...arr, ...data[i].Record.map((record) => record.Date) ]
+    //       }
+    //     const UniqueArray = [...new Set(arr)];
+    //     setDates(UniqueArray);
+    //     setAllStudents(() => {
+    //       let Students = data;
+    //       for ( const date of UniqueArray.reverse() )
+    //       {
+    //         for ( let student of Students)
+    //         {
+    //           const IsAttendancePresent = student.Record.some((record) => {
+    //             if (record.Date === date)
+    //             {
+    //               return true;
+    //             }
+    //             return false;
+    //           })
+    //           if (!IsAttendancePresent)
+    //           {
+    //             student.Record.unshift({
+    //               Date: date,
+    //               State: "--",
+    //             })
+    //           }
+    //           student.Record.sort((record1, record2) => {
+    //             const date1 = new Date(record1.Date);
+    //             const date2 = new Date(record2.Date);
+    //             // console.log("Date1: ",date1,"Date2: ", date2);
+    //             if (date1 < date2) {
+    //               return -1;
+    //             } else if (date1 > date2) {
+    //               return 1;
+    //             } else {
+    //               return 0;
+    //             }
+    //           });
+    //         }
+    //       }
+    //       return Students;
+    //     });
+    // }).catch(err => {
+    //   console.log(err)
+    // })
 
 
     fetch("/getLeaves")
@@ -395,7 +394,7 @@ const Admin = () => {
             <Button variant="contained" ref={LeaveButton} onClick={() => {setTableShow((TableShow !== 2) ? 2:0); setUseEffectTrigger(!UseEffectTrigger)}}>View Leaves</Button>
             
             {TableShow === 1 ? (
-              <TableOfRecords Dates={Dates} setDates={setDates} AllStudents={AllStudents} setAllStudents={setAllStudents} />
+              <TableOfRecords />
               ): ("")}
             {(TableShow === 2) ? (
               <ListOfLeaves Leaves={Leaves} UseEffectTrigger={UseEffectTrigger} setUseEffectTrigger={setUseEffectTrigger} />

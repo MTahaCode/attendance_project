@@ -282,7 +282,7 @@ const Student = () => {
                       fullWidth
                     />
                     <Button disabled={!Img} onClick={() => UploadImg()} variant="contained" color="primary" type="submit">
-                      Upload Image
+                      Set as Pfp
                     </Button>
                   </FormControl>
                 </Paper>
